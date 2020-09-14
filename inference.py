@@ -6,6 +6,14 @@ from torchvision.utils import make_grid
 from torch.utils.data import DataLoader
 from model import CNN
 
+def visualization(images, pred):
+    grid = make_grid(images, nrow=4)
+
+    plt.imshow(grid.cpu().numpy().transpose((1, 2, 0)))
+    plt.axis('off')
+    plt.title(pred.cpu().numpy())
+    plt.show()
+
 if __name__ == "__main__":
     root = '../../dataset/mnist/digit-recognizer'
     pth_file = './checkpoint.pt'
@@ -15,23 +23,23 @@ if __name__ == "__main__":
 
     # 加载数据集
     test_data = MNIST(root, train=False, transform=transform)
-    test_loader = DataLoader(test_data, batch_size=16, shuffle=False)
+    test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
     
     # 定义模型
     model = CNN().to(device)
     model.eval()
     model.load_state_dict(torch.load(pth_file))
 
-    for _, images in enumerate(test_loader):
+    with open('submission.csv', 'w') as f:
+        f.write('ImageId,Label\n')
+
+    for i, images in enumerate(test_loader):
         images = images.to(device)
 
         outputs = model(images)
         _, index = torch.max(outputs, dim=1)
 
-        grid = make_grid(images, nrow=4)
-
-        plt.imshow(grid.cpu().numpy().transpose((1, 2, 0)))
-        plt.axis('off')
-        plt.title(index.cpu().numpy())
-        plt.show()
-        break
+        with open('submission.csv', 'a') as f:
+            f.write('{},{}\n'.format(i+1, index.item()))
+        
+        # visualization(images, index)
