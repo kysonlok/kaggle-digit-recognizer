@@ -7,6 +7,7 @@ from dataset import MNIST
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from torch.utils.data import random_split
+from torch.optim.lr_scheduler import StepLR
 from model import CNN
 from tqdm import tqdm
 from pytorchtools import EarlyStopping
@@ -14,7 +15,7 @@ from pytorchtools import EarlyStopping
 def train(model, device, train_loader, optimizer, epoch):
     train_losses = []
     
-    # 定义损失函数
+    # Define loss function
     criterion = nn.CrossEntropyLoss()
     
     model.train()
@@ -41,7 +42,7 @@ def train(model, device, train_loader, optimizer, epoch):
 def test(model, device, val_loader):
     valid_losses = []
 
-    # 定义损失函数
+    # Define loss function
     criterion = nn.CrossEntropyLoss()
 
     correct = 0
@@ -60,24 +61,25 @@ def test(model, device, val_loader):
             loss = criterion(outputs, labels)
             valid_losses.append(loss.item())
 
-            # 获取概率最大的下标，这里对应的就是预测数字
+            # the index for maximum probability is our predict result
             _, index = torch.max(outputs, dim=1)
             correct += torch.sum(labels == index)
 
-    accuracy = 100. * correct / len(val_loader.dataset)
+    accuracy = 100. * correct.item() / len(val_loader.dataset)
 
     print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)\n'.format(
         np.average(valid_losses), correct, len(val_loader.dataset), accuracy))
 
     return np.average(valid_losses)
+
 def save_loss(path, train_loss, valid_loss):
     with open(path, 'w') as f:
         f.write('Training Loss, {}\n'.format(','.join(map(str, train_losses))))
         f.write('Validation Loss, {}\n'.format(','.join(map(str, valid_losses))))
 
 def visualize(train_loss, valid_loss):
-    plt.plot(range(1,len(train_loss)+1), train_loss, label='Training Loss')
-    plt.plot(range(1,len(valid_loss)+1), valid_loss, label='Validation Loss')
+    plt.plot(range(1,len(train_loss)+1), train_loss, label='Training Loss', marker = 'o')
+    plt.plot(range(1,len(valid_loss)+1), valid_loss, label='Validation Loss', marker = 'o')
 
     # find position of lowest validation loss
     min_idx = valid_loss.index(min(valid_loss)) + 1 
@@ -85,11 +87,8 @@ def visualize(train_loss, valid_loss):
 
     plt.xlabel('epochs')
     plt.ylabel('loss')
-    plt.ylim(0, 0.2)
     plt.xlim(0, len(train_loss) + 1)
-    plt.grid(True)
     plt.legend()
-    plt.tight_layout()
     plt.show()
 
 if __name__ == "__main__":
@@ -97,34 +96,41 @@ if __name__ == "__main__":
     batch_size = 16
     num_workers = 0
     lr = 0.001
-    epoch_iter = 2
+    epoch_iter = 50
     patience = 5
 
     train_losses = []
     valid_losses = []
 
-    transform = transforms.Compose([transforms.ToTensor()])
+    # without data augmentation i obtained an accuracy of 0.98417
+    transform = transforms.Compose([transforms.RandomRotation(10), 
+                                    transforms.RandomAffine(degrees=10, translate=(0.1, 0.1), scale=(0.8, 1.2)), 
+                                    transforms.ToTensor(), 
+                                    transforms.Normalize((0.1307,), (0.3081,))])
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    # 定义模型
+    # define model
     model = CNN().to(device)
 
-    # 定义优化器
+    # define optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    # 加载数据集
+    # load dataset
     dataset = MNIST(root, transform=transform)
-    train_data, val_data = random_split(dataset, [floor(0.8*len(dataset)), floor(0.2*len(dataset))])
+    train_data, val_data = random_split(dataset, [floor(0.9*len(dataset)), floor(0.1*len(dataset))])
     train_loader = DataLoader(train_data, batch_size=16, shuffle=True, num_workers=num_workers)
     val_loader = DataLoader(val_data, batch_size=16, shuffle=True, num_workers=num_workers)
 
     early_stopping = EarlyStopping(patience=patience, verbose=True)
+    # scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
     for epoch in range(1, epoch_iter + 1):
         avg_train_loss = train(model, device, train_loader, optimizer, epoch)
         avg_valid_loss = test(model, device, val_loader)
 
         train_losses.append(avg_train_loss)
         valid_losses.append(avg_valid_loss)
+
+        # scheduler.step()
 
         # early_stopping needs the validation loss to check if it has decresed, 
         # and if it has, it will make a checkpoint of the current model
@@ -136,5 +142,5 @@ if __name__ == "__main__":
 
     save_loss('loss.csv', train_losses, valid_losses)
 
-    # visualization
+    # visualize
     visualize(train_losses, valid_losses)

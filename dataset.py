@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from torchvision.utils import make_grid
@@ -24,9 +25,11 @@ class MNIST(Dataset):
             self.data = pd.read_csv(os.path.join(root, 'test.csv'))
 
     def get_train(self, index):
-        # 必须是 uint8 类型，否则 transforms.ToTensor() 不进行归一化
+        # dtype mush be uint8, otherwise transforms.ToTensor() won't normalize to [0, 1]
         image = np.array(self.data.iloc[index, 1:].values.astype(np.uint8).reshape((28, 28)))
         label = self.data.iloc[index, 0]
+
+        image = Image.fromarray(image, mode='L')
 
         if self.transform is not None:
             image = self.transform(image)
@@ -34,7 +37,7 @@ class MNIST(Dataset):
         return image, label
 
     def get_test(self, index):
-        # 必须是 uint8 类型，否则 transforms.ToTensor() 不进行归一化
+        # dtype mush be uint8, otherwise transforms.ToTensor() won't normalize to [0, 1]
         image = np.array(self.data.iloc[index, :].values.astype(np.uint8).reshape((28, 28)))
 
         if self.transform is not None:
@@ -47,7 +50,7 @@ class MNIST(Dataset):
 
     def __getitem__(self, index):
         '''
-        # 必须是 uint8 类型，否则 transforms.ToTensor() 不进行归一化
+        # dtype mush be uint8, otherwise transforms.ToTensor() won't normalize to [0, 1]
         image = np.array(self.data.iloc[index, 1:].values.astype(np.uint8).reshape((28, 28)))
         label = self.data.iloc[index, 0]
 

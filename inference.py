@@ -6,7 +6,7 @@ from torchvision.utils import make_grid
 from torch.utils.data import DataLoader
 from model import CNN
 
-def visualization(images, pred):
+def visualize(images, pred):
     grid = make_grid(images, nrow=4)
 
     plt.imshow(grid.cpu().numpy().transpose((1, 2, 0)))
@@ -21,11 +21,11 @@ if __name__ == "__main__":
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     transform = transforms.Compose([transforms.ToTensor()])
 
-    # 加载数据集
+    # load dataset
     test_data = MNIST(root, train=False, transform=transform)
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
     
-    # 定义模型
+    # define model
     model = CNN().to(device)
     model.eval()
     model.load_state_dict(torch.load(pth_file))
@@ -42,4 +42,4 @@ if __name__ == "__main__":
         with open('submission.csv', 'a') as f:
             f.write('{},{}\n'.format(i+1, index.item()))
         
-        # visualization(images, index)
+        # visualize(images, index)
