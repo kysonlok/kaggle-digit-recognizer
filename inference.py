@@ -1,10 +1,13 @@
+import sys
 import torch
+import numpy as np
 import matplotlib.pyplot as plt
 from dataset import MNIST
 from torchvision import transforms
 from torchvision.utils import make_grid
 from torch.utils.data import DataLoader
 from model import CNN
+from PIL import Image
 
 def visualize(images, pred):
     grid = make_grid(images, nrow=4)
@@ -13,6 +16,34 @@ def visualize(images, pred):
     plt.axis('off')
     plt.title(pred.cpu().numpy())
     plt.show()
+
+def real_predict(model, transform, file):
+    threshold = 50
+    
+    try:
+        img = Image.open(file).convert('L')
+    except IOError:
+        print('Unable to load image')
+        sys.exit(1)
+
+    img = img.resize((28, 28))
+    img = np.array(img)
+
+    for i in range(28):
+        for j in range(28):
+            img[i][j] = 255 - img[i][j]
+            if (img[i][j] < threshold):
+                img[i][j] = 0
+            else:
+                img[i][j] = 255
+
+    img = transform(img)
+    img = img.unsqueeze(0)
+
+    output = model(img)
+    _, index = torch.max(output, dim=1)
+
+    print('Predict result: {}'.format(index.item()))
 
 if __name__ == "__main__":
     root = '../../dataset/mnist'
@@ -44,3 +75,5 @@ if __name__ == "__main__":
             f.write('{},{}\n'.format(i+1, index.item()))
         
         # visualize(images, index)
+
+    # real_predict(model, transform, 'test.jpg')
