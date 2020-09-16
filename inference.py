@@ -15,14 +15,15 @@ def visualize(images, pred):
     plt.show()
 
 if __name__ == "__main__":
-    root = '../../dataset/mnist/digit-recognizer'
+    root = '../../dataset/mnist'
     pth_file = './checkpoint.pt'
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    transform = transforms.Compose([transforms.ToTensor()])
+    transform = transforms.Compose([transforms.ToTensor(), 
+                                    transforms.Normalize((0.1307,), (0.3081,))])
 
     # load dataset
-    test_data = MNIST(root, train=False, transform=transform)
+    test_data = MNIST(root, stage='test', transform=transform)
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False)
     
     # define model

@@ -92,7 +92,7 @@ def visualize(train_loss, valid_loss):
     plt.show()
 
 if __name__ == "__main__":
-    root = '../../dataset/mnist/digit-recognizer'
+    root = '../../dataset/mnist'
     batch_size = 16
     num_workers = 0
     lr = 0.001
@@ -103,10 +103,14 @@ if __name__ == "__main__":
     valid_losses = []
 
     # without data augmentation i obtained an accuracy of 0.98417
-    transform = transforms.Compose([transforms.RandomRotation(10), 
-                                    transforms.RandomAffine(degrees=10, translate=(0.1, 0.1), scale=(0.8, 1.2)), 
-                                    transforms.ToTensor(), 
-                                    transforms.Normalize((0.1307,), (0.3081,))])
+    transform_train = transforms.Compose([transforms.RandomRotation(10, fill=(0,)), 
+                                          transforms.RandomAffine(degrees=10, translate=(0.1, 0.1), scale=(0.8, 1.2), fillcolor=(0,)), 
+                                          transforms.ToTensor(), 
+                                          transforms.Normalize((0.1307,), (0.3081,))])
+
+    transform_val = transforms.Compose([transforms.ToTensor(), 
+                                        transforms.Normalize((0.1307,), (0.3081,))])
+
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # define model
@@ -116,10 +120,11 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     # load dataset
-    dataset = MNIST(root, transform=transform)
-    train_data, val_data = random_split(dataset, [floor(0.9*len(dataset)), floor(0.1*len(dataset))])
-    train_loader = DataLoader(train_data, batch_size=16, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(val_data, batch_size=16, shuffle=True, num_workers=num_workers)
+    train_data = MNIST(root, stage='train', transform=transform_train)
+    train_loader = DataLoader(train_data, batch_size=16, shuffle=True, drop_last=True, num_workers=num_workers)
+    
+    val_data = MNIST(root, stage='validate', transform=transform_val)
+    val_loader = DataLoader(val_data, batch_size=16, shuffle=True, drop_last=True, num_workers=num_workers)
 
     early_stopping = EarlyStopping(patience=patience, verbose=True)
     # scheduler = StepLR(optimizer, step_size=10, gamma=0.1)

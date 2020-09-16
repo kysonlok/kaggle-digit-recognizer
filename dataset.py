@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+from math import floor
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
@@ -10,17 +11,23 @@ import torch
 import torchvision
 
 class MNIST(Dataset):
-    def __init__(self, root, train=True, transform=None):
+    def __init__(self, root, stage='train', transform=None):
         self.data = None
-        self.train = train
+        self.stage = stage
 
         if transform:
             self.transform = transform
         else:
             self.transform = transforms.Compose([transforms.ToTensor()])
 
-        if train:
+        if stage == 'train':
             self.data = pd.read_csv(os.path.join(root, 'train.csv'))
+            idx = floor(0.8*len(self.data))
+            self.data = self.data.iloc[:idx, :]
+        elif stage == 'validate':
+            self.data = pd.read_csv(os.path.join(root, 'train.csv'))
+            idx = floor(0.8*len(self.data))
+            self.data = self.data.iloc[idx:, :]
         else:
             self.data = pd.read_csv(os.path.join(root, 'test.csv'))
 
@@ -57,7 +64,7 @@ class MNIST(Dataset):
         if self.transform is not None:
             image = self.transform(image)
         '''
-        if self.train:
+        if self.stage == 'train' or self.stage == 'validate':
             return self.get_train(index)
         else:
             return self.get_test(index)
@@ -74,8 +81,13 @@ if __name__ == "__main__":
     # transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
     transform = transforms.Compose([transforms.ToTensor()])
 
-    train_data = MNIST('../../dataset/mnist/digit-recognizer', transform=transform)
+    train_data = MNIST('../../dataset/mnist', stage='train', transform=transform)
     train_loader = DataLoader(train_data, batch_size=16, shuffle=True)
+
+    val_data = MNIST('../../dataset/mnist', stage='validate', transform=transform)
+    val_loader = DataLoader(val_data, batch_size=16, shuffle=True)
+
+    print(len(train_loader), len(val_loader))
 
     # Plotting 4x4 grid of images using matplotlib
     train_iter = iter(train_loader)
